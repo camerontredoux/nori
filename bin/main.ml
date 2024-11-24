@@ -37,7 +37,8 @@ let scrape body =
 let main filename =
   let body = query filename in
   let rows = scrape body in
-  Minttea.start app ~initial_model:(init_model rows)
+  let config = Minttea.config ~fps:10 () in
+  Minttea.start ~config app ~initial_model:(init_model rows)
 
 let () =
   let argv = Sys.get_argv () in
