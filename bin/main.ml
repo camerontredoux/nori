@@ -1,7 +1,7 @@
 open Base
 open Stdio
 open Soup
-open Lwt
+open Lwt.Syntax
 open Cohttp_lwt_unix
 open Tui
 
@@ -10,7 +10,8 @@ let query filename =
     Uri.of_string ("https://libgen.is/fiction/?q=" ^ Uri.pct_encode filename)
   in
   Lwt_main.run
-    (Client.get url >>= fun (_, body) -> Cohttp_lwt.Body.to_string body)
+    (let* _, body = Client.get url in
+     Cohttp_lwt.Body.to_string body)
 
 let app = Minttea.app ~init ~update ~view ()
 let unwrap_option = function None -> failwith "unwrapped None" | Some v -> v
