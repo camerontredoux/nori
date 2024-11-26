@@ -1,6 +1,6 @@
 (executable
  (public_name nori)
  (name main)
- (modules main tui download styles)
+ (modules main tui download styles utils)
  (libraries nori base camlzip lambdasoup cohttp-lwt-unix minttea riot spices leaves yojson)
  (preprocess (pps ppx_jane ppx_deriving.show)))

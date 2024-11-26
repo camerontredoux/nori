@@ -1,6 +1,7 @@
 open Minttea
 open Leaves
 open Styles
+open Download
 
 type table_screen = { table : Table.t }
 
@@ -12,6 +13,7 @@ type download_screen = {
   author : string;
   title : string;
   url : string;
+  download_link : string;
 }
 
 type reading_screen = { text : string }
@@ -57,6 +59,7 @@ let transition (model : model) =
       let author = List.nth row 0 in
       let title = List.nth row 2 in
       let url = List.nth row 5 in
+      let download_link = parse_download url in
       ( Download_screen
           {
             choice =
@@ -72,6 +75,7 @@ let transition (model : model) =
             author;
             title;
             url;
+            download_link;
           },
         Command.Noop )
   | Download_screen screen ->
@@ -156,8 +160,9 @@ Downloading %s by %s
 
 |}
     (keyword "%s" screen.title)
-    (subtle "%s" screen.author)
-    (subtle "%s" screen.url) display help
+    (bold "%s" screen.author)
+    (subtle "%s" screen.download_link)
+    display help
 
 let view model =
   match model.section with

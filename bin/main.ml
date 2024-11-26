@@ -5,9 +5,9 @@ open Lwt.Syntax
 open Cohttp_lwt_unix
 open Tui
 open Download
+open Utils
 
 let libgen_url = "https://libgen.is/fiction/?q="
-let unwrap_option = function None -> failwith "unwrapped None" | Some v -> v
 
 let query filename =
   let url = Uri.of_string (libgen_url ^ Uri.pct_encode filename) in

@@ -4,6 +4,8 @@ open Lwt.Syntax
 open Lwt.Infix
 open Cohttp
 open Cohttp_lwt_unix
+open Soup
+open Utils
 
 let rec create_xdg_data_home path =
   Lwt.catch
@@ -57,3 +59,11 @@ let rec download uri filename =
                (Code.string_of_status status)
                (Header.to_string headers)))
     (fun exn -> Lwt.fail exn)
+
+let parse_download url =
+  let body =
+    Lwt_main.run
+      (let* _, body = Client.get (Uri.of_string url) in
+       Cohttp_lwt.Body.to_string body)
+  in
+  parse body $ "table tr a" |> attribute "href" |> unwrap_option
