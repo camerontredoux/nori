@@ -1,18 +1,18 @@
 open Minttea
 open Leaves
-
-let dot = Spices.(default |> fg (color "236") |> build) " • "
-let keyword fmt = Spices.(default |> fg (color "211") |> build) fmt
-let subtle fmt = Spices.(default |> fg (color "241") |> build) fmt
+open Styles
 
 type table_screen = { table : Table.t }
 
 type download_screen = {
+  choice : Text_input.t;
+  confirmed : bool;
   finished : bool;
   progress : Progress.t;
   author : string;
   title : string;
   url : string;
+  cursor : int;
 }
 
 type reading_screen = { text : string }
@@ -24,9 +24,34 @@ type section =
 
 let download_ref : unit Riot.Ref.t = Riot.Ref.make ()
 
+type model = { section : section; rows : Table.row list }
+
+let table_screen rows =
+  Table_screen
+    {
+      table =
+        {
+          columns =
+            [|
+              { title = "Author"; width = 20 };
+              { title = "Series"; width = 20 };
+              { title = "Title"; width = 20 };
+              { title = "Language"; width = 10 };
+              { title = "File"; width = 15 };
+              { title = "Link"; width = 0 };
+            |];
+          rows;
+          cursor = 0;
+          styles = Table.default_styles;
+          start_of_frame = 0;
+          height_of_frame = 5;
+        };
+    }
+
 exception Invalid_transition
 
-let transition = function
+let transition (model : model) =
+  match model.section with
   | Table_screen screen ->
       let cursor = screen.table.cursor in
       let row = List.nth screen.table.rows cursor in
@@ -35,6 +60,10 @@ let transition = function
       let url = List.nth row 5 in
       ( Download_screen
           {
+            choice =
+              Text_input.make "" ~placeholder:"Do you want to continue? [y/n]"
+                ~cursor:in_cursor ();
+            confirmed = false;
             finished = false;
             progress =
               Progress.make ~width:50
@@ -44,43 +73,20 @@ let transition = function
             author;
             title;
             url;
+            cursor = 0;
           },
-        Command.Set_timer (download_ref, 0.1) )
-  | Download_screen _screen -> (Reading_screen { text = "Hello!" }, Command.Noop)
+        Command.Noop )
+  | Download_screen screen ->
+      if screen.confirmed then (Reading_screen { text = "Hello!" }, Command.Noop)
+      else (table_screen model.rows, Command.Noop)
   | _ -> raise Invalid_transition
 
-type model = { section : section }
-
-let init_model rows =
-  {
-    section =
-      Table_screen
-        {
-          table =
-            {
-              columns =
-                [|
-                  { title = "Author"; width = 20 };
-                  { title = "Series"; width = 20 };
-                  { title = "Title"; width = 20 };
-                  { title = "Language"; width = 10 };
-                  { title = "File"; width = 15 };
-                  { title = "Link"; width = 0 };
-                |];
-              rows;
-              cursor = 0;
-              styles = Table.default_styles;
-              start_of_frame = 0;
-              height_of_frame = 5;
-            };
-        };
-  }
-
+let init_model rows = { section = table_screen rows; rows }
 let init _ = Command.(Seq [ Hide_cursor; Enter_alt_screen ])
 
 let update event model =
   try
-    if event = Event.KeyDown (Key "q", No_modifier) then raise Exit
+    if event = Event.KeyDown (Key "x", Ctrl) then raise Exit
     else
       let section, cmd =
         match model.section with
@@ -94,50 +100,69 @@ let update event model =
                   Command.Noop )
             | Event.KeyDown (Space, No_modifier) ->
                 Tty.Terminal.clear ();
-                transition model.section
+                transition model
             | _ -> (model.section, Command.Noop))
         | Reading_screen screen -> (Reading_screen screen, Command.Noop)
         | Download_screen screen -> (
             match event with
             | Event.Timer ref
-              when (not screen.finished) && Riot.Ref.equal ref download_ref ->
+              when (not screen.finished) && screen.confirmed
+                   && Riot.Ref.equal ref download_ref ->
                 let progress = Progress.increment screen.progress 0.1 in
                 let finished = Progress.is_finished screen.progress in
-                if finished then transition model.section
+                if finished then transition model
                 else
                   ( Download_screen { screen with progress; finished },
                     Command.Set_timer (download_ref, 1.) )
-            | _ -> (model.section, Command.Noop))
+            | Event.KeyDown (Enter, No_modifier) ->
+                if String.equal (Text_input.current_text screen.choice) "y" then
+                  ( Download_screen { screen with confirmed = true },
+                    Command.Set_timer (download_ref, 0.1) )
+                else transition model
+            | e ->
+                let choice = Text_input.update screen.choice e in
+                (Download_screen { screen with choice }, Command.Noop))
       in
-      ({ section }, cmd)
+      ({ model with section }, cmd)
   with Exit ->
     Tty.Escape_seq.show_cursor_seq ();
     Riot.shutdown ();
     (model, Command.Quit)
 
-let view model =
-  match model.section with
-  | Table_screen screen ->
-      let help =
-        subtle "up/down: move" ^ dot ^ subtle "space: choose" ^ dot
-        ^ subtle "q: quit"
-      in
-      Format.sprintf {|
+let view_table screen =
+  let help =
+    subtle "up/down: move" ^ dot ^ subtle "space: choose" ^ dot
+    ^ subtle "ctrl+x: quit"
+  in
+  Format.sprintf {|
 %s
 
 %s
 
 |} (Table.view screen.table) help
-  | Download_screen screen ->
-      Format.sprintf {|
+
+let view_download screen =
+  let help = subtle "enter: submit" ^ dot ^ subtle "ctrl+x: quit" in
+  let confirmed = screen.confirmed in
+  let display =
+    if confirmed then Progress.view screen.progress
+    else Text_input.view screen.choice
+  in
+  Format.sprintf {|
 Downloading %s by %s
 (%s)
 
 %s
 
+%s
+
 |}
-        (keyword "%s" screen.title)
-        (subtle "%s" screen.author)
-        (subtle "%s" screen.url)
-        (Progress.view screen.progress)
+    (keyword "%s" screen.title)
+    (subtle "%s" screen.author)
+    (subtle "%s" screen.url) display help
+
+let view model =
+  match model.section with
+  | Table_screen screen -> view_table screen
+  | Download_screen screen -> view_download screen
   | Reading_screen screen -> screen.text ^ subtle "\n\nquit" ^ dot ^ subtle "q"
