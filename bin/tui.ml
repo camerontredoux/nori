@@ -12,7 +12,6 @@ type download_screen = {
   author : string;
   title : string;
   url : string;
-  cursor : int;
 }
 
 type reading_screen = { text : string }
@@ -61,7 +60,7 @@ let transition (model : model) =
       ( Download_screen
           {
             choice =
-              Text_input.make "" ~placeholder:"Do you want to continue? [y/n]"
+              Text_input.make "" ~placeholder:"Do you want to continue? [y/N]"
                 ~cursor:in_cursor ();
             confirmed = false;
             finished = false;
@@ -73,7 +72,6 @@ let transition (model : model) =
             author;
             title;
             url;
-            cursor = 0;
           },
         Command.Noop )
   | Download_screen screen ->
@@ -165,4 +163,4 @@ let view model =
   match model.section with
   | Table_screen screen -> view_table screen
   | Download_screen screen -> view_download screen
-  | Reading_screen screen -> screen.text ^ subtle "\n\nquit" ^ dot ^ subtle "q"
+  | Reading_screen screen -> screen.text ^ subtle "\n\nctrl+x: quit"
