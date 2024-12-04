@@ -5,22 +5,20 @@
 (generate_opam_files true)
 
 (source
- (github username/reponame))
+ (github camerontredoux/nori))
 
-(authors "Author Name")
+(authors "Cameron Tredoux")
 
-(maintainers "Maintainer Name")
+(maintainers "Cameron Tredoux")
 
 (license LICENSE)
 
-(documentation https://url/to/documentation)
-
 (package
  (name nori)
- (synopsis "A short synopsis")
- (description "A longer description")
+ (synopsis "Nori is a terminal based ePub downloader and reader.")
+ (description "Nori scrapes Libgen's fiction section and allows users to download ePub files and read them all from the terminal.")
  (depends ocaml dune)
  (tags
-  (topics "to describe" your project)))
+  ("lambdasoup" "minttea" "riot" "tui" "reader" "epub")))
 
 ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/reference/dune-project/index.html

@@ -2,5 +2,5 @@
  (public_name nori)
  (name main)
  (modules main tui download styles utils screens)
- (libraries nori base camlzip lambdasoup cohttp-lwt-unix minttea riot spices leaves yojson)
+ (libraries base camlzip lambdasoup cohttp-lwt-unix minttea riot spices leaves yojson)
  (preprocess (pps ppx_jane ppx_let ppx_deriving.show lwt_ppx)))
