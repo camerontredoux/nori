@@ -26,7 +26,7 @@ let table_screen rows last_cursor =
           cursor = last_cursor;
           styles = Table.default_styles;
           start_of_frame = 0;
-          height_of_frame = 5;
+          height_of_frame = 10;
         };
     }
 
@@ -144,7 +144,11 @@ let view_table (screen : table_screen) =
 
 %s
 
-|} (Table.view screen.table) help
+%s
+
+|} (Table.view screen.table)
+    (subtle "%d row(s)" (List.length screen.table.rows))
+    help
 
 let view_download screen =
   let help = subtle "enter: submit" ^ dot ^ subtle "ctrl+x: quit" in
