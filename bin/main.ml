@@ -4,15 +4,15 @@ open Soup
 open Lwt.Syntax
 open Cohttp_lwt_unix
 open Tui
-open Download
 open Utils
 
 let libgen_url = "https://libgen.is/fiction/?q="
 
 let query filename =
   let url = Uri.of_string (libgen_url ^ Uri.pct_encode filename) in
-  let* _, body = Client.get url in
-  Cohttp_lwt.Body.to_string body
+  Lwt_main.run
+    (let* _, body = Client.get url in
+     Cohttp_lwt.Body.to_string body)
 
 let app = Minttea.app ~init ~update ~view ()
 
@@ -36,17 +36,21 @@ let scrape body =
   parse body $$ ".catalog tbody tr" |> to_list |> List.map ~f:parse_rows
 
 let main filename =
-  let body = Lwt_main.run (query filename) in
-  let rows = scrape body in
-  let config = Minttea.config ~fps:10 () in
+  let body = query filename in
+  let rows =
+    scrape body
+    |> List.filter ~f:(fun row ->
+           String.is_substring ~substring:"EPUB"
+             (List.nth row 4 |> unwrap_option))
+  in
+  let config = Minttea.config ~fps:1 () in
   Minttea.start ~config app ~initial_model:(init_model rows)
 
 let () =
   let argv = Sys.get_argv () in
   let args = Array.to_list argv |> List.tl_exn in
   match args with
-  | [ "-u"; url; "-d"; filename ] ->
-      Lwt_main.run (download (Uri.of_string url) filename)
+  | [ "clean" ] -> Utils.clean ()
   | [ filename ] ->
       printf "Searching for \"%s\"...\n%!" filename;
       main filename
